@@ -23,9 +23,9 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 from harness import (
-    ExecutionValidator, ResearchLogManager, GitCommitHarness, 
-    SimpleLockManager, SessionRecorder, PromptHints
+    ExecutionValidator, ResearchLogManager, GitCommitHarness, PromptHints
 )
+from session import SessionRecorder, SimpleLockManager
 
 
 class AgentRunner(ABC):

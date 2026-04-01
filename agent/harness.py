@@ -7,10 +7,12 @@ Harness 执行框架 - 兼容性导入
 - harness/prompt_hints.py  - PromptHints
 - harness/log_manager.py   - ResearchLogManager
 - harness/git_harness.py   - GitCommitHarness
-- harness/session.py       - SessionRecorder, SimpleLockManager
 - harness/validator.py     - ExecutionValidator
 
-此文件保留用于向后兼容，新代码请直接从 harness 子模块导入。
+Session 管理已独立：
+- session.py               - SessionRecorder, SimpleLockManager
+
+此文件保留用于向后兼容，新代码请直接从对应模块导入。
 """
 
 from harness import (
@@ -18,8 +20,6 @@ from harness import (
     PromptHints,
     ResearchLogManager,
     GitCommitHarness,
-    SessionRecorder,
-    SimpleLockManager,
     ExecutionValidator,
 )
 
@@ -28,7 +28,5 @@ __all__ = [
     "PromptHints",
     "ResearchLogManager",
     "GitCommitHarness",
-    "SessionRecorder",
-    "SimpleLockManager",
     "ExecutionValidator",
 ]
