@@ -38,7 +38,8 @@ class StageRunner(AgentRunner):
         base_dir = config.get("base_dir", ".")
         task = config.get("task", "Task")
         work_dir = config.get("work_dir")  # Kimi 工作目录（可选）
-        super().__init__(base_dir, task, work_dir)
+        src_dir = config.get("src_dir")
+        super().__init__(base_dir, task, work_dir, src_dir)
         self.config = config
         self.global_context = global_context
 
@@ -195,6 +196,14 @@ class ExploreRunner(StageRunner):
 
     # --- Prompt 构建 ---
 
+    def _get_stagnant_warning(self) -> str:
+        if self._stagnant:
+            return (
+                "\n[⚠️ 警告] 最近 3 次迭代没有更新文档或研究日志。"
+                "请确保本次有实质性进展。\n"
+            )
+        return ""
+
     def build_prompt(self) -> str:
         """构建自由探索 prompt"""
         parts = []
@@ -204,38 +213,22 @@ class ExploreRunner(StageRunner):
                 parts.append(content.strip())
 
         prompt_body = "\n\n".join(parts)
-        kb = self._get_kb_snapshot()
 
-        warning = ""
-        if self._stagnant:
-            warning = (
-                "\n[⚠️ 警告] 最近 3 次迭代没有更新文档或研究日志。"
-                "请确保本次有实质性进展。\n"
+        frame_path = self.prompts_dir / "explore-task-frame.md"
+        if frame_path.exists():
+            frame = frame_path.read_text(encoding="utf-8")
+            task_frame = frame.format(
+                task=self.task,
+                kb=self._get_kb_snapshot(),
+                warning=self._get_stagnant_warning(),
+                knowledge_dir=self.knowledge_dir,
+                base_dir=self.base_dir,
+                src_dir=self.src_dir or "未配置",
             )
+        else:
+            task_frame = f"目标: {self.task}\n\n源码位置: {self.src_dir or '未配置'}"
 
-        kd = self.knowledge_dir
-
-        return f"""{prompt_body}
-
-目标: {self.task}
-
-当前知识库:
-{kb}
-{warning}
-## 执行要求
-
-1. 阅读源码，获取新的代码洞察
-2. 更新或新建 `{kd}/` 下的文档（states/, gates/, maps/, paths/）
-3. 在 `{kd}/research-log.md` 最前面追加本次记录
-4. 执行 git add 和 git commit（git 命令已自动指向正确目录）
-
-## 系统改进
-
-如果你发现当前的方法论、prompt 设计或文档格式有缺陷，可以直接修改
-`{self.base_dir}/agent/prompts/` 下的对应片段文件。
-
-源码位置: {self.base_dir / 'linux-src'}
-"""
+        return f"{prompt_body}\n\n{task_frame}"
 
     def _load_prompt_part(self, name: str) -> str:
         """加载 prompt 片段，从 prompts/ 目录读取"""
@@ -468,18 +461,20 @@ class SkillRunner(StageRunner):
             for key, value in self.global_context.items():
                 context_info += f"- {key}: {value}\n"
 
-        return f"""{skill_doc}
+        # 4. 加载任务框架模板
+        prompts_dir = self.base_dir / "agent" / "prompts"
+        frame_path = prompts_dir / "skill-task-frame.md"
+        if frame_path.exists():
+            frame = frame_path.read_text(encoding="utf-8")
+            task_frame = frame.format(
+                task=task,
+                output=output,
+                context_info=context_info,
+            )
+        else:
+            task_frame = f"---\n## 当前任务\n\n任务描述: {task}\n输出位置: {output}{context_info}\n\n## 执行要求\n- 严格按照上述方法论执行\n- 完成后更新研究日志"
 
----
-## 当前任务
-
-任务描述: {task}
-输出位置: {output}{context_info}
-
-## 执行要求
-- 严格按照上述方法论执行
-- 完成后更新研究日志
-"""
+        return f"{skill_doc}\n\n{task_frame}"
 
     def post_cycle(self, output: str, validation: dict):
         """Skill 执行后：可更新全局上下文供后续 Stage 使用"""
@@ -518,6 +513,10 @@ class PipelineRunner:
 
         # 设置 base_dir
         stage_config["base_dir"] = str(self.base_dir)
+
+        # 继承 pipeline 顶层的 src_dir（如果 stage 未显式指定）
+        if "src_dir" not in stage_config and "src_dir" in self.config:
+            stage_config["src_dir"] = self.config["src_dir"]
 
         # 获取 Runner 类，默认 SkillRunner
         runner_cls = self.RUNNER_MAP.get(skill, SkillRunner)

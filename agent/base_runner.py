@@ -31,7 +31,7 @@ from session import SessionRecorder, SimpleLockManager
 class AgentRunner(ABC):
     """Agent 执行器基类 - 简化版"""
     
-    def __init__(self, base_dir: str, task: Optional[str] = None, work_dir: Optional[str] = None):
+    def __init__(self, base_dir: str, task: Optional[str] = None, work_dir: Optional[str] = None, src_dir: Optional[str] = None):
         self.base_dir = Path(base_dir).resolve()
         self.knowledge_dir = self.base_dir / "knowledge"
         self.knowledge_dir.mkdir(parents=True, exist_ok=True)
@@ -39,6 +39,9 @@ class AgentRunner(ABC):
         
         # Kimi 工作目录（可选，默认为 None 表示使用当前目录）
         self.work_dir = Path(work_dir).resolve() if work_dir else None
+        
+        # 源码目录（外部配置，代码不硬编码默认值）
+        self.src_dir = Path(src_dir).resolve() if src_dir else None
         
         # 核心组件（简化）
         self.log_manager = ResearchLogManager(str(self.knowledge_dir))

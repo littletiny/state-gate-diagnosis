@@ -35,8 +35,8 @@ class ExploreAgent(AgentRunner):
             return path.read_text(encoding="utf-8")
         return ""
 
-    def __init__(self, base_dir: str, task: str = None):
-        super().__init__(base_dir, task=task or "分析Linux整机网络带宽低的根因")
+    def __init__(self, base_dir: str, task: str = None, src_dir: str = None):
+        super().__init__(base_dir, task=task or "分析Linux整机网络带宽低的根因", src_dir=src_dir)
         self.prompts_dir = self.base_dir / "agent" / "prompts"
         self.progress_file = self.knowledge_dir / "progress.json"
         self.progress = self._load_progress()
@@ -255,15 +255,15 @@ class ExploreAgent(AgentRunner):
         self._pre_hash = self._get_head_hash()
         return super().pre_execute()
 
-    def build_prompt(self) -> str:
-        kb = self._get_kb_snapshot()
-        warning = ""
+    def _get_stagnant_warning(self) -> str:
         if self._stagnant:
-            warning = (
+            return (
                 "\n[⚠️ 警告] 最近 3 次迭代没有更新文档或研究日志。"
                 "请确保本次有实质性进展。\n"
             )
+        return ""
 
+    def build_prompt(self) -> str:
         parts = []
         for name in self.PROMPT_PARTS:
             content = self._load_prompt_part(name)
@@ -271,29 +271,22 @@ class ExploreAgent(AgentRunner):
                 parts.append(content.strip())
 
         prompt_body = "\n\n".join(parts)
-        kd = self.knowledge_dir
 
-        return f"""{prompt_body}
+        frame_path = self.prompts_dir / "explore-task-frame.md"
+        if frame_path.exists():
+            frame = frame_path.read_text(encoding="utf-8")
+            task_frame = frame.format(
+                task=self.task,
+                kb=self._get_kb_snapshot(),
+                warning=self._get_stagnant_warning(),
+                knowledge_dir=self.knowledge_dir,
+                base_dir=self.base_dir,
+                src_dir=self.src_dir or "未配置",
+            )
+        else:
+            task_frame = f"目标: {self.task}\n\n源码位置: {self.src_dir or '未配置'}"
 
-目标: {self.task}
-
-当前知识库:
-{kb}
-{warning}
-## 执行要求
-
-1. 阅读源码，获取新的代码洞察
-2. 更新或新建 `{kd}/` 下的文档（states/, gates/, maps/, paths/）
-3. 在 `{kd}/research-log.md` 最前面追加本次记录
-4. 执行 git add 和 git commit（git 命令已自动指向正确目录）
-
-## 系统改进
-
-如果你发现当前的方法论、prompt 设计或文档格式有缺陷，可以直接修改
-`{self.base_dir}/agent/prompts/` 下的对应片段文件。
-
-源码位置: {self.base_dir / 'linux-src'}
-"""
+        return f"{prompt_body}\n\n{task_frame}"
 
     def finalize_session(self, success: bool = True, stats: dict = None):
         """任务完成后的最终归档：复制文件到 session 目录，然后清理原始文件"""
@@ -374,6 +367,7 @@ def main():
         help="单次对话最大工具调用步数 (默认: 100)",
     )
     parser.add_argument("-t", "--task", help="任务目标描述")
+    parser.add_argument("--src-dir", help="源码目录路径（默认不指定）")
 
     args = parser.parse_args()
 
@@ -383,7 +377,7 @@ def main():
         if (script_dir / "knowledge").exists():
             base_dir = script_dir
 
-    agent = ExploreAgent(str(base_dir), task=args.task)
+    agent = ExploreAgent(str(base_dir), task=args.task, src_dir=args.src_dir)
     agent.max_steps = args.max_steps
     agent.run(args.cycles)
 
