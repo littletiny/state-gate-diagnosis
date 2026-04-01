@@ -18,12 +18,6 @@ State Driver Types (orthogonal, combinable; can form Hybrid drivers):
 
 Purpose: Scan code to discover State and Gate instances.
 
-Agent 能力: 代码扫描 + 机制分析
-
-> 使用系统级 Skills（由 Agent 平台提供）：
-> - **CR (code-reader)**: 模块结构扫描，生成高层架构文档
-> - **CMR (code-mechanism-reader)**: 深入特定机制分析，关注概念抽象、状态机、同步/异步设计
-
 Input: Source code directory
 
 Output: `doc/state-gate/states/{name}.md`, `doc/state-gate/gates/{name}.md` with `status: discovered`
@@ -90,7 +84,7 @@ Output Specification:
 - **Structure**: Symptom → Starting State → Hypothesis paths → Verification steps → Root cause identification
 - **Status**: `done` (diagnosis complete) or `partial` (inconclusive, needs more data)
 
-Diagnosis Method (ECTM):
+Diagnosis Method:
 
 **Core Principles**:
 - **Observer Check**: Question "obvious" assumptions; verify the observation framework itself is unbiased
@@ -106,25 +100,11 @@ Root Cause Levels:
 - Intermediate: Why did the triggering condition or message occur?
 - Deep: Why did State become abnormal? (imbalance? config? bug?)
 
-## Execution Guide
-
-Trigger Conditions:
-- No prior docs exist -> Start Phase 1
-- Found status=discovered docs -> Start Phase 2
-- Multiple status=analyzed docs -> Start Phase 3
-- Have map + symptom -> Start Phase 4
-
-Pipeline Rules:
-- One Agent per phase
-- Agent reads input docs, writes output docs, exits
-- Next phase triggered by presence of appropriate status docs
-- New discoveries reset to Phase 1 for that component
-
-## ECTM Integration
+## Integration
 
 | Phase | Observe | Hypothesize | Verify | Evidence |
 |-------|---------|-------------|--------|----------|
-| Discovery | Code patterns | This is State/Gate | code-mechanism-reader 分析 | Code locations |
-| Analysis | State/Gate behavior | Abnormal patterns | Code reading | Key code + logic |
+| Discovery | Code patterns | This is State/Gate | read code | Code locations |
+| Analysis | State/Gate behavior | Abnormal patterns | read code | Key code + logic |
 | Connection | Document relations | Impact paths | Cross-module read | Call relations |
 | Diagnosis | Symptom | Multiple paths | Gate trigger check | Decision path |
