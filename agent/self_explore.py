@@ -57,35 +57,12 @@ class ExploreAgent(AgentRunner):
         self.progress = self._load_progress()
         self._stagnant = False
         self._pre_hash = None
-        # 当前 session 归档目录
-        self._session_dir = self._ensure_session_dir()
 
-    def _ensure_session_dir(self) -> Path:
-        """确保 session 归档目录存在。直接复用最新 session 或新建。"""
-        sessions_dir = self.knowledge_dir / "sessions"
-
-        # 尝试复用最新的 session
-        existing = sorted(
-            [d for d in sessions_dir.iterdir() if d.is_dir()],
-            key=lambda p: p.name,
-            reverse=True,
-        )
-        if existing:
-            session_dir = existing[0]
-            for subdir in ["states", "gates", "maps", "paths", "logs"]:
-                (session_dir / subdir).mkdir(exist_ok=True)
-            return session_dir
-
-        # 新建 session
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        slug = self.task.replace(" ", "-").replace("/", "-").replace("\\", "-")[:50]
-        session_name = f"{timestamp}-{slug}"
-        session_dir = sessions_dir / session_name
-        session_dir.mkdir(parents=True, exist_ok=True)
-        for subdir in ["states", "gates", "maps", "paths", "logs"]:
-            (session_dir / subdir).mkdir(exist_ok=True)
-
-        return session_dir
+    def _get_session_dir(self):
+        """获取当前 session 目录，直接使用 SessionRecorder 创建的目录"""
+        if self.session_recorder:
+            return self.session_recorder.actual_dir
+        return None
 
     def _load_progress(self) -> dict:
         """加载进度文件"""
@@ -161,28 +138,59 @@ class ExploreAgent(AgentRunner):
         return "\n".join(lines)
 
     def _archive_to_session(self):
-        """将 knowledge/ 根目录的文档全量同步到 session 目录"""
+        """将 knowledge/ 根目录（除 sessions/ 外）完整归档到 session 目录，并清理原始文件"""
+        session_dir = self._get_session_dir()
+        if not session_dir:
+            return 0
+
         archived = 0
-        for subdir in ["states", "gates", "maps", "paths"]:
-            src_dir = self.knowledge_dir / subdir
-            dst_dir = self._session_dir / subdir
-            if not src_dir.exists():
+        exclude_dirs = {"sessions"}  # 只排除其他会话目录，logs 需要归档
+        
+        # 遍历 knowledge/ 下的所有文件和目录
+        for item in self.knowledge_dir.iterdir():
+            if item.name in exclude_dirs:
                 continue
-            dst_dir.mkdir(parents=True, exist_ok=True)
-            for src_file in src_dir.glob("*.md"):
-                dst_file = dst_dir / src_file.name
-                if not dst_file.exists() or src_file.stat().st_mtime > dst_file.stat().st_mtime:
-                    shutil.copy2(str(src_file), str(dst_file))
-                    archived += 1
-        for meta in ["research-log.md", "index.md", "progress.json"]:
-            src = self.knowledge_dir / meta
-            dst = self._session_dir / meta
-            if src.exists():
-                if not dst.exists() or src.stat().st_mtime > dst.stat().st_mtime:
-                    shutil.copy2(str(src), str(dst))
-                    archived += 1
+                
+            dst = session_dir / item.name
+            
+            if item.is_dir():
+                # 复制整个目录
+                if dst.exists():
+                    # 合并：复制目录下的文件
+                    archived += self._copy_tree(item, dst)
+                else:
+                    # 完整复制目录
+                    shutil.copytree(item, dst, dirs_exist_ok=True)
+                    archived += self._count_files(item)
+                # 删除源目录
+                shutil.rmtree(item)
+            else:
+                # 复制文件
+                shutil.copy2(str(item), str(dst))
+                archived += 1
+                # 删除源文件
+                item.unlink()
+                    
         if archived:
-            print(f"[Archive] {archived} files synced to {self._session_dir}")
+            print(f"[Archive] {archived} items archived to {session_dir}")
+        return archived
+    
+    def _copy_tree(self, src: Path, dst: Path) -> int:
+        """复制目录内容，返回复制的文件数"""
+        count = 0
+        for item in src.rglob("*"):
+            if item.is_file():
+                rel_path = item.relative_to(src)
+                dst_file = dst / rel_path
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                if not dst_file.exists() or item.stat().st_mtime > dst_file.stat().st_mtime:
+                    shutil.copy2(str(item), str(dst_file))
+                count += 1
+        return count
+    
+    def _count_files(self, path: Path) -> int:
+        """统计目录下的文件数"""
+        return sum(1 for _ in path.rglob("*") if _.is_file())
 
     def _auto_commit(self) -> bool:
         """自动执行 git add + commit"""
@@ -304,8 +312,26 @@ class ExploreAgent(AgentRunner):
 源码位置: {self.base_dir / 'linux-src'}
 """
 
+    def finalize_session(self, success: bool = True, stats: dict = None):
+        """任务完成后的最终归档：复制文件到 session 目录，然后清理原始文件"""
+        if not success:
+            print("[Archive] 任务未成功完成，保留 knowledge/ 下的原始文件")
+            return
+            
+        session_dir = self._get_session_dir()
+        if not session_dir:
+            print("[Archive] 无法获取 session 目录，保留原始文件")
+            return
+            
+        print(f"[Archive] 最终归档到 {session_dir}")
+        archived = self._archive_to_session()
+        if archived > 0:
+            print(f"[Archive] 归档完成，knowledge/ 已清理")
+        else:
+            print(f"[Archive] 无文件需要归档")
+
     def post_execute(self, output: str, returncode: int, validation: dict):
-        """执行后：自动归档、自动提交、检查进度"""
+        """执行后：自动提交、检查进度"""
         # 1. 自动提交（如果 Agent 没做）
         self._auto_commit()
 
@@ -313,10 +339,7 @@ class ExploreAgent(AgentRunner):
         docs_changed = self._get_docs_changed()
         log_updated = validation.get("research_log_updated", False)
 
-        # 3. 归档到 session
-        self._archive_to_session()
-
-        # 4. 记录进度
+        # 3. 记录进度
         self.progress["iterations"].append(
             {
                 "cycle": self.current_cycle,
@@ -329,7 +352,7 @@ class ExploreAgent(AgentRunner):
 
         print(f"[Progress] Docs touched: {len(docs_changed)}, Log updated: {log_updated}")
 
-        # 5. 停滞检查
+        # 4. 停滞检查
         if len(self.progress["iterations"]) >= 3:
             recent = self.progress["iterations"][-3:]
             total_docs = sum(len(it["docs_touched"]) for it in recent)

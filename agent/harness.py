@@ -540,22 +540,17 @@ class SimpleLockManager:
     def release(self, success: bool = True, stats: dict = None):
         """释放锁"""
         if success:
-            state = {
-                "status": "completed",
-                "completed_at": datetime.now().isoformat(),
-                "stats": stats or {}
-            }
-            self.state_path.write_text(json.dumps(state, indent=2), encoding='utf-8')
+            # 任务成功，清理状态文件（归档已完成，无需保留状态）
+            self.state_path.unlink(missing_ok=True)
             self._finalize_session(stats)
+        else:
+            # 任务失败/中断，保留锁文件用于恢复
+            pass
     
     def _handle_previous_failure(self):
         """处理上次失败的会话"""
         # 找到最新的 session 目录（按修改时间排序）
-        actual_dir = None
-        if self.sessions_dir.exists():
-            dirs = [d for d in self.sessions_dir.iterdir() if d.is_dir()]
-            if dirs:
-                actual_dir = sorted(dirs, key=lambda p: p.stat().st_mtime, reverse=True)[0]
+        actual_dir = self._get_latest_session_dir()
         
         if not actual_dir or not actual_dir.exists():
             return
@@ -575,23 +570,20 @@ class SimpleLockManager:
         self._update_sessions_index()
         print(f"[LockManager] 已标记失败会话: {actual_dir.name}")
     
+    def _get_latest_session_dir(self) -> Optional[Path]:
+        """获取最新的 session 目录（按修改时间排序）"""
+        if not self.sessions_dir.exists():
+            return None
+        dirs = [d for d in self.sessions_dir.iterdir() if d.is_dir() and not d.is_symlink()]
+        if not dirs:
+            return None
+        return sorted(dirs, key=lambda p: p.stat().st_mtime, reverse=True)[0]
+    
     def _finalize_session(self, stats: dict = None):
-        """完成会话"""
-        # 找到最新的 session 目录（按修改时间排序）
-        actual_dir = None
-        if self.sessions_dir.exists():
-            dirs = [d for d in self.sessions_dir.iterdir() if d.is_dir()]
-            if dirs:
-                actual_dir = sorted(dirs, key=lambda p: p.stat().st_mtime, reverse=True)[0]
+        """完成会话 - 仅更新锁状态，归档操作由 AgentRunner 处理"""
+        actual_dir = self._get_latest_session_dir()
         
         if actual_dir and actual_dir.exists():
-            # 更新 manifest
-            manifest_file = actual_dir / "manifest.json"
-            if manifest_file.exists():
-                manifest = json.loads(manifest_file.read_text(encoding='utf-8'))
-                manifest["status"] = "completed"
-                manifest["completed_at"] = datetime.now().isoformat()
-                manifest_file.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding='utf-8')
             print(f"[LockManager] 会话完成: {actual_dir.name}")
         
         self.lock_path.unlink(missing_ok=True)

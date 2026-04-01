@@ -273,16 +273,21 @@ class AgentRunner(ABC):
             import traceback
             traceback.print_exc()
         finally:
+            # 最终归档（移动文件并清理）
+            if hasattr(self, 'finalize_session'):
+                stats = {"cycles": cycles_run, "task": self.task}
+                self.finalize_session(success=success, stats=stats)
+            
             # 结束会话记录
             if self.session_recorder:
                 stats = {"cycles": cycles_run, "task": self.task}
                 self.session_recorder.finalize(success=success, stats=stats)
             
-            # 释放锁并归档
+            # 释放锁
             stats = {"cycles": cycles_run, "task": self.task}
             self.lock_manager.release(success=success, stats=stats)
             if success:
-                print(f"[Lock] 任务完成，已归档")
+                print(f"[Lock] 任务完成，已释放锁")
             else:
                 print(f"[Lock] 任务失败/中断，锁文件保留")
         

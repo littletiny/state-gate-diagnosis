@@ -180,16 +180,13 @@ class ExploreRunner(StageRunner):
         self.progress: dict = {"task": self.task, "iterations": []}
         self._stagnant = False
         self._pre_hash: Optional[str] = None
-        self._session_dir: Optional[Path] = None
 
     # --- Pre-hooks ---
 
     def pre_cycle(self):
-        """加载进度，确保 session 目录，记录 pre-hash"""
+        """加载进度，记录 pre-hash"""
         self._pre_hash = self._get_head_hash()
         self._load_progress()
-        if self.current_cycle == 0:
-            self._ensure_session_dir()
 
     def _load_progress(self):
         if self.progress_file.exists():
@@ -198,32 +195,11 @@ class ExploreRunner(StageRunner):
             except Exception:
                 self.progress = {"task": self.task, "iterations": []}
 
-    def _ensure_session_dir(self) -> Path:
-        """确保 session 归档目录存在"""
-        sessions_dir = self.knowledge_dir / "sessions"
-
-        # 尝试复用最新的 session
-        existing = sorted(
-            [d for d in sessions_dir.iterdir() if d.is_dir()],
-            key=lambda p: p.name,
-            reverse=True,
-        )
-        if existing:
-            self._session_dir = existing[0]
-            for subdir in ["states", "gates", "maps", "paths", "logs"]:
-                (self._session_dir / subdir).mkdir(exist_ok=True)
-            return self._session_dir
-
-        # 新建 session
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        slug = self.task.replace(" ", "-").replace("/", "-").replace("\\", "-")[:50]
-        session_name = f"{timestamp}-{slug}"
-        self._session_dir = sessions_dir / session_name
-        self._session_dir.mkdir(parents=True, exist_ok=True)
-        for subdir in ["states", "gates", "maps", "paths", "logs"]:
-            (self._session_dir / subdir).mkdir(exist_ok=True)
-
-        return self._session_dir
+    def _get_session_dir(self) -> Optional[Path]:
+        """获取当前 session 目录，直接使用 SessionRecorder 创建的目录"""
+        if self.session_recorder:
+            return self.session_recorder.actual_dir
+        return None
 
     def _get_head_hash(self) -> str:
         try:
@@ -426,13 +402,14 @@ class ExploreRunner(StageRunner):
 
     def _archive_to_session(self):
         """将 knowledge/ 根目录的文档全量同步到 session 目录"""
-        if not self._session_dir:
+        session_dir = self._get_session_dir()
+        if not session_dir:
             return
 
         archived = 0
         for subdir in ["states", "gates", "maps", "paths"]:
             src_dir = self.knowledge_dir / subdir
-            dst_dir = self._session_dir / subdir
+            dst_dir = session_dir / subdir
             if not src_dir.exists():
                 continue
             dst_dir.mkdir(parents=True, exist_ok=True)
@@ -443,13 +420,13 @@ class ExploreRunner(StageRunner):
                     archived += 1
         for meta in ["research-log.md", "index.md", "progress.json"]:
             src = self.knowledge_dir / meta
-            dst = self._session_dir / meta
+            dst = session_dir / meta
             if src.exists():
                 if not dst.exists() or src.stat().st_mtime > dst.stat().st_mtime:
                     shutil.copy2(str(src), str(dst))
                     archived += 1
         if archived:
-            print(f"[Archive] {archived} files synced to {self._session_dir}")
+            print(f"[Archive] {archived} files synced to {session_dir}")
 
     def _save_progress(self):
         """保存进度文件"""

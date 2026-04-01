@@ -15,6 +15,32 @@ Diag-loop 统一入口
 import sys
 from pathlib import Path
 
+
+def check_lock_and_exit(base_dir: Path):
+    """检查是否有未完成的 session，如果有则报错退出"""
+    knowledge_dir = base_dir / "knowledge"
+    lock_file = knowledge_dir / "lock.file"
+
+    if lock_file.exists():
+        print("=" * 60)
+        print("错误: 检测到未完成的 session")
+        print("=" * 60)
+        print()
+        print(f"Lock file: {lock_file}")
+        print()
+        print("上次任务可能因以下原因中断:")
+        print("  - 用户手动中断 (Ctrl+C)")
+        print("  - 程序异常退出")
+        print("  - 系统重启")
+        print()
+        print("请先执行恢复操作:")
+        print(f"  python {Path(__file__).parent / 'recovery.py'}")
+        print()
+        print("恢复完成后，您可以重新启动任务。")
+        print("=" * 60)
+        sys.exit(1)
+
+
 # agent 目录在 repo root: evolve.py -> bin/ -> repo root -> agent/
 agent_dir = Path(__file__).parent.parent / "agent"
 sys.path.insert(0, str(agent_dir))
@@ -33,6 +59,9 @@ def main():
   python evolve.py                    # 标准模式，Agent 自主迭代
   python evolve.py -n 10              # 最多 10 轮迭代
   python evolve.py -t "分析 TCP 拥塞控制"  # 指定任务目标
+
+恢复中断的任务:
+  python bin/recovery.py              # 归档并清理
         """
     )
     
@@ -46,6 +75,12 @@ def main():
     parser.add_argument('--list-skills', action='store_true', help='列出可用 Skills')
     
     args = parser.parse_args()
+    
+    # 确定基础目录
+    base_dir = Path(args.base_dir).resolve()
+    
+    # 检查 lock file
+    check_lock_and_exit(base_dir)
     
     # 确定基础目录
     base_dir = Path(args.base_dir).resolve()
