@@ -19,6 +19,8 @@ Net-Diag 统一入口 (run.sh)
 Explore 模式示例:
     ./run.sh -n 5                    # 最多5轮迭代
     ./run.sh -t "分析TCP拥塞控制"     # 指定任务
+    ./run.sh --src-dir /path/to/src -t "分析TCP"  # 指定源码目录
+    ./run.sh --backend claude -t "分析网络延迟"   # 使用 Claude 后端
 
 Pipeline 模式示例:
     ./run.sh pipeline -c rules/pipeline.yaml      # 需在项目根目录执行

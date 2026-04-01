@@ -59,6 +59,7 @@ def main():
   python evolve.py                    # 标准模式，Agent 自主迭代
   python evolve.py -n 10              # 最多 10 轮迭代
   python evolve.py -t "分析 TCP 拥塞控制"  # 指定任务目标
+  python evolve.py --src-dir /path/to/linux-src -t "分析 TCP"  # 指定源码目录
 
 恢复中断的任务:
   python bin/recovery.py              # 归档并清理
@@ -72,6 +73,7 @@ def main():
     parser.add_argument('-s', '--max-steps', type=int, default=100, dest='max_steps',
                         help='单次对话最大工具调用步数 (默认: 100)')
     parser.add_argument('-t', '--task', help='任务目标描述')
+    parser.add_argument('--src-dir', help='源码目录路径（用于源码分析）')
     parser.add_argument('--backend', default='kimi', help='Agent 后端 (kimi|claude|codex, 默认: kimi)')
     
     args = parser.parse_args()
@@ -89,6 +91,8 @@ def main():
         new_argv.extend(['--max-steps', str(args.max_steps)])
     if args.task:
         new_argv.extend(['-t', args.task])
+    if args.src_dir:
+        new_argv.extend(['--src-dir', args.src_dir])
     if args.backend != 'kimi':
         new_argv.extend(['--backend', args.backend])
     sys.argv = new_argv
