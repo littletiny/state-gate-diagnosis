@@ -1,0 +1,10 @@
+#!/bin/bash
+# Git wrapper for knowledge repository
+# Ensures all git commands run inside the knowledge directory
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+KNOWLEDGE_DIR="$REPO_ROOT/knowledge"
+
+cd "$KNOWLEDGE_DIR" || exit 1
+/usr/bin/git "$@"
