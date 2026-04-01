@@ -104,7 +104,7 @@ net-diag/
 │   ├── meta_loop.py       # Meta 决策循环（待重新设计）
 │   ├── harness.py         # 通用工具（Git/验证/日志管理）
 │   └── tools/
-│       └── exploration_tools.py
+
 │
 ├── skills/                # Skill 定义（方法论）
 │   ├── discovery/SKILL.md
