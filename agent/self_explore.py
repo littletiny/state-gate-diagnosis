@@ -138,17 +138,20 @@ class ExploreAgent(AgentRunner):
         return "\n".join(lines)
 
     def _archive_to_session(self):
-        """将 knowledge/ 根目录（除 sessions/ 外）完整归档到 session 目录，并清理原始文件"""
+        """将 knowledge/ 根目录（除 sessions/、index.md 外）完整归档到 session 目录，并清理原始文件"""
         session_dir = self._get_session_dir()
         if not session_dir:
             return 0
 
         archived = 0
-        exclude_dirs = {"sessions"}  # 只排除其他会话目录，logs 需要归档
+        exclude_dirs = {"sessions"}  # 排除其他会话目录
+        exclude_files = {"index.md"}  # index.md 是 knowledge/ 的元数据，不归档
         
         # 遍历 knowledge/ 下的所有文件和目录
         for item in self.knowledge_dir.iterdir():
             if item.name in exclude_dirs:
+                continue
+            if item.is_file() and item.name in exclude_files:
                 continue
                 
             dst = session_dir / item.name

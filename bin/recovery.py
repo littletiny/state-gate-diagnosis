@@ -51,12 +51,15 @@ def find_interrupted_session(knowledge_dir: Path) -> tuple[Path, dict] | None:
 
 
 def archive_to_session(knowledge_dir: Path, session_dir: Path, dry_run: bool = False) -> int:
-    """将 knowledge/ 根目录（除 sessions/ 外）完整归档到 session 目录，并清理原始文件"""
+    """将 knowledge/ 根目录（除 sessions/、index.md 外）完整归档到 session 目录，并清理原始文件"""
     archived = 0
     exclude_dirs = {"sessions"}
+    exclude_files = {"index.md"}  # knowledge/ 的元数据，不归档
 
     for item in knowledge_dir.iterdir():
         if item.name in exclude_dirs:
+            continue
+        if item.is_file() and item.name in exclude_files:
             continue
             
         dst = session_dir / item.name
