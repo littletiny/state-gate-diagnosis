@@ -31,11 +31,14 @@ from harness import (
 class AgentRunner(ABC):
     """Agent 执行器基类 - 简化版"""
     
-    def __init__(self, base_dir: str, task: Optional[str] = None):
+    def __init__(self, base_dir: str, task: Optional[str] = None, work_dir: Optional[str] = None):
         self.base_dir = Path(base_dir).resolve()
         self.knowledge_dir = self.base_dir / "knowledge"
         self.knowledge_dir.mkdir(parents=True, exist_ok=True)
         self.task = task or "Explore"
+        
+        # Kimi 工作目录（可选，默认为 None 表示使用当前目录）
+        self.work_dir = Path(work_dir).resolve() if work_dir else None
         
         # 核心组件（简化）
         self.log_manager = ResearchLogManager(str(self.knowledge_dir))
@@ -93,13 +96,19 @@ class AgentRunner(ABC):
         print(f"[Agent] Started at {datetime.now().strftime('%H:%M:%S')}")
         
         try:
+            # 准备 cwd 参数（如果设置了 work_dir）
+            cwd = str(self.work_dir) if self.work_dir else None
+            if cwd:
+                print(f"[Agent] Working directory: {cwd}")
+            
             if show_realtime:
                 process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
-                    bufsize=1
+                    bufsize=1,
+                    cwd=cwd
                 )
                 
                 output_lines = []
@@ -124,7 +133,8 @@ class AgentRunner(ABC):
                     cmd,
                     capture_output=True,
                     text=True,
-                    timeout=self.timeout
+                    timeout=self.timeout,
+                    cwd=cwd
                 )
                 output = result.stdout if result.stdout else result.stderr
                 returncode = result.returncode

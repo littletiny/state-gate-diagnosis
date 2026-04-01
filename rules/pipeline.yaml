@@ -1,0 +1,46 @@
+# Pipeline 配置示例
+#
+# 使用方式:
+#   ./run.sh pipeline -c rules/pipeline.yaml
+#
+# 注意: 需在项目根目录执行，base_dir 固定为当前目录
+
+name: linux-network-analysis
+description: Linux 网络带宽问题分析 Pipeline
+
+# Stage 列表 - 按顺序执行
+# 每个 Stage 通过 'skill' 字段指定使用的 Skill
+
+stages:
+  # Stage 1: 自由探索 - 探索整体架构
+  # skill: explore 表示使用 ExploreRunner（多轮迭代、停滞检测、自动归档）
+  - name: "initial-explore"
+    skill: explore
+    task: "探索 Linux 网络栈整体架构，识别关键 State 和 Gate"
+    max_cycles: 5
+    # work_dir: /tmp  # 可选：指定 Kimi 的工作目录（默认使用当前目录）
+
+  # Stage 2: ECTM 问题定义 - 结构化分析问题
+  # 普通 Skill，单轮执行
+  - name: "problem-analysis"
+    skill: evidence-chain-tracking
+    task: "分析网络带宽低的根因，使用 ECTM 方法构建问题演进表"
+    output: knowledge/problem-analysis.md
+
+  # Stage 3: 深入探索 - 针对关键模块深入分析
+  - name: "deep-dive"
+    skill: explore
+    task: "深入分析 TCP 拥塞控制机制，关注 ssthresh 和 cwnd 的关系"
+    max_cycles: 8
+
+  # Stage 4: 代码机制分析
+  - name: "mechanism-analysis"
+    skill: code-mechanism-reader
+    task: "分析 tcp_cong_avoid() 函数的实现机制"
+    input: linux-src/net/ipv4/tcp_cong.c
+
+  # Stage 5: 最终探索 - 整合并生成诊断路径
+  - name: "final-integration"
+    skill: explore
+    task: "整合所有分析结果，生成完整的 State-Gate 诊断路径图"
+    max_cycles: 5
