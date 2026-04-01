@@ -10,8 +10,7 @@ Consolidate multi-stage analysis outputs into a final report.
 ## Input Sources
 
 Read available analysis documents:
-- `doc/*.md` - CR/CMR outputs
-- `knowledge/states/*.md`, `knowledge/gates/*.md`, `knowledge/maps/*.md` - Explore outputs
+- `knowledge/states/*.md`, `knowledge/paths/*.md`, `knowledge/gates/*.md`, `knowledge/maps/*.md` - Explore outputs
 - `knowledge/research-log.md` - Research history
 
 ## Output
