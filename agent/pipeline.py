@@ -160,6 +160,7 @@ class ExploreRunner(StageRunner):
         self.progress: dict = {"task": self.task, "iterations": []}
         self._stagnant = False
         self._pre_hash: Optional[str] = None
+        self.max_cycles = config.get("max_cycles", 1)
 
     # --- Pre-hooks ---
 
@@ -205,6 +206,18 @@ class ExploreRunner(StageRunner):
             )
         return ""
 
+    def _get_iteration_hint(self) -> str:
+        lines = ["## 迭代进度", "", f"当前迭代: {self.current_cycle + 1} / {self.max_cycles}", ""]
+        return "\n".join(lines)
+
+    def _get_first_round_hint(self) -> str:
+        if self.current_cycle == 0:
+            return (
+                "**🚀 第一轮：请调用 CR（Code Reader）和 CMR（Code Mechanism Reader）阅读源码，"
+                "生成系统架构文档和核心机制分析文档。**"
+            )
+        return ""
+
     def build_prompt(self) -> str:
         """构建自由探索 prompt"""
         parts = []
@@ -225,6 +238,9 @@ class ExploreRunner(StageRunner):
                 knowledge_dir=self.knowledge_dir,
                 base_dir=self.base_dir,
                 src_dir=self.src_dir or "未配置",
+                iteration_hint=self._get_iteration_hint(),
+                first_round_hint=self._get_first_round_hint(),
+                max_cycles=self.max_cycles,
             )
         else:
             task_frame = f"目标: {self.task}\n\n源码位置: {self.src_dir or '未配置'}"

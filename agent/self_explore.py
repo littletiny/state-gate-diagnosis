@@ -42,6 +42,7 @@ class ExploreAgent(AgentRunner):
         self.progress = self._load_progress()
         self._stagnant = False
         self._pre_hash = None
+        self.max_cycles = None
 
     def _get_session_dir(self):
         """获取当前 session 目录，直接使用 SessionRecorder 创建的目录"""
@@ -263,6 +264,20 @@ class ExploreAgent(AgentRunner):
             )
         return ""
 
+    def _get_iteration_hint(self) -> str:
+        if self.max_cycles is None:
+            return ""
+        lines = ["## 迭代进度", "", f"当前迭代: {self.current_cycle + 1} / {self.max_cycles}", ""]
+        return "\n".join(lines)
+
+    def _get_first_round_hint(self) -> str:
+        if self.current_cycle == 0:
+            return (
+                "**🚀 第一轮：请调用 CR（Code Reader）和 CMR（Code Mechanism Reader）阅读源码，"
+                "生成系统架构文档和核心机制分析文档。**"
+            )
+        return ""
+
     def build_prompt(self) -> str:
         parts = []
         for name in self.PROMPT_PARTS:
@@ -282,6 +297,9 @@ class ExploreAgent(AgentRunner):
                 knowledge_dir=self.knowledge_dir,
                 base_dir=self.base_dir,
                 src_dir=self.src_dir or "未配置",
+                iteration_hint=self._get_iteration_hint(),
+                first_round_hint=self._get_first_round_hint(),
+                max_cycles=self.max_cycles or "?",
             )
         else:
             task_frame = f"目标: {self.task}\n\n源码位置: {self.src_dir or '未配置'}"
@@ -380,6 +398,7 @@ def main():
 
     agent = ExploreAgent(str(base_dir), task=args.task, src_dir=args.src_dir, backend=args.backend)
     agent.max_steps = args.max_steps
+    agent.max_cycles = args.cycles
     agent.run(args.cycles)
 
 
