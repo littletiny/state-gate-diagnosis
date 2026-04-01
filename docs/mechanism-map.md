@@ -36,7 +36,7 @@ AgentRunner.run_cycle()
    - 上次遗留问题
    - 本次目标建议
 
-3. Skill 方法论 - skill_loader 读取 SKILL.md
+3. Skill 方法论 - 直接读取 skills/{name}/SKILL.md
    - Purpose/Input/Output/Instructions
 
 4. 具体任务指令 - Runner 构建时传入
@@ -69,7 +69,7 @@ AgentRunner.run_cycle()
 **机制**: 自包含的方法论文档
 
 **代码**:
-- `agent/skill_loader.py`
+
   - `get_skill_path()` - 查找 Skill
   - `list_skills()` - 列出可用 Skill
 - `skills/{name}/SKILL.md` - 方法论文档本身

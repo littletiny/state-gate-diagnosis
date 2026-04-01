@@ -72,7 +72,6 @@ def main():
     parser.add_argument('-s', '--max-steps', type=int, default=100, dest='max_steps',
                         help='单次对话最大工具调用步数 (默认: 100)')
     parser.add_argument('-t', '--task', help='任务目标描述')
-    parser.add_argument('--list-skills', action='store_true', help='列出可用 Skills')
     
     args = parser.parse_args()
     
@@ -81,29 +80,6 @@ def main():
     
     # 检查 lock file
     check_lock_and_exit(base_dir)
-    
-    # 确定基础目录
-    base_dir = Path(args.base_dir).resolve()
-    
-    # 列出 Skills
-    if args.list_skills:
-        from skill_loader import list_skills
-        skills = list_skills(str(base_dir / "skills"))
-        print("可用 Skills:")
-        for skill in skills:
-            skill_path = base_dir / "skills" / skill / "SKILL.md"
-            desc = ""
-            if skill_path.exists():
-                try:
-                    content = skill_path.read_text(encoding='utf-8')
-                    for line in content.split('\n')[:5]:
-                        if line.strip() and not line.startswith('#'):
-                            desc = line.strip()[:50]
-                            break
-                except:
-                    pass
-            print(f"  {skill:<20} {desc}")
-        return
     
     # 自主探索模式
     new_argv = ['evolve', '--base-dir', str(base_dir)]
