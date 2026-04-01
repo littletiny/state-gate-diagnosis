@@ -30,16 +30,9 @@ class ExploreAgent(AgentRunner):
 
     def _load_prompt_part(self, name: str) -> str:
         """加载 prompt 片段，从 prompts/ 目录读取 .md 文件"""
-        # 优先读取 .md 文件
-        md_path = self.prompts_dir / f"explore-{name}.md"
-        if md_path.exists():
-            return md_path.read_text(encoding="utf-8")
-        
-        # 兼容性：保留 .txt 文件支持
-        txt_path = self.prompts_dir / f"{name}.txt"
-        if txt_path.exists():
-            return txt_path.read_text(encoding="utf-8")
-        
+        path = self.prompts_dir / f"explore-{name}.md"
+        if path.exists():
+            return path.read_text(encoding="utf-8")
         return ""
 
     def __init__(self, base_dir: str, task: str = None):
