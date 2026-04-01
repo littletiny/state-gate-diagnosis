@@ -26,29 +26,21 @@ class ExploreAgent(AgentRunner):
     """探索 Agent - 目标驱动，无阶段约束，扁平工作目录"""
 
     PROMPT_PARTS = ["identity", "methodology", "constraints"]
+    """Prompt 片段列表，按顺序组合成完整 prompt"""
 
-    BUILTIN_PROMPT_PARTS = {
-        "identity": (
-            "你是 Linux 内核网络专家，正在使用 State-Gate Trace Protocol "
-            "构建网络诊断知识库。\n"
-        ),
-        "methodology": (
-            "1. **State-Gate 模型**\n"
-            "   - State: 离散状态节点\n"
-            "   - Gate: 基于 State 做决策的关键代码位置\n"
-            "   - Map: State 与 Gate 之间的拓扑关系\n\n"
-            "2. **ECTM 证据链方法**\n"
-            "   - 观察 → 假设 → 验证 → 证据\n\n"
-            "3. **无阶段约束**\n"
-            "   - 不需要固定顺序，随时创建 State/Gate/Map\n"
-        ),
-        "constraints": (
-            "- 每次迭代必须有实质性的文档更新或新建\n"
-            "- 结论应有代码依据\n"
-            "- 文档无需 status 字段\n"
-            "- 不要重复修改已有文档的措辞，除非有新的证据\n"
-        ),
-    }
+    def _load_prompt_part(self, name: str) -> str:
+        """加载 prompt 片段，从 prompts/ 目录读取 .md 文件"""
+        # 优先读取 .md 文件
+        md_path = self.prompts_dir / f"explore-{name}.md"
+        if md_path.exists():
+            return md_path.read_text(encoding="utf-8")
+        
+        # 兼容性：保留 .txt 文件支持
+        txt_path = self.prompts_dir / f"{name}.txt"
+        if txt_path.exists():
+            return txt_path.read_text(encoding="utf-8")
+        
+        return ""
 
     def __init__(self, base_dir: str, task: str = None):
         super().__init__(base_dir, task=task or "分析Linux整机网络带宽低的根因")
@@ -80,12 +72,7 @@ class ExploreAgent(AgentRunner):
             encoding="utf-8",
         )
 
-    def _load_prompt_part(self, name: str) -> str:
-        """加载 prompt 片段，支持外部文件覆盖"""
-        path = self.prompts_dir / f"{name}.txt"
-        if path.exists():
-            return path.read_text(encoding="utf-8")
-        return self.BUILTIN_PROMPT_PARTS.get(name, "")
+
 
     def _get_head_hash(self) -> str:
         """获取当前 Git HEAD hash"""
