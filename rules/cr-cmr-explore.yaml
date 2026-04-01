@@ -31,8 +31,8 @@ stages:
     task: "基于 CR 和 CMR 的输出，进行自由探索：验证假设、发现关联、填补空白"
     max_cycles: 10
 
-  # Stage 4: Summary - 总结归档
+  # Stage 4: Summary - 总结归档（单轮整理，不探索新内容）
   - name: "summary"
     skill: explore
-    task: "整合所有分析结果，生成最终总结报告：核心发现、关键结论、待办事项"
-    max_cycles: 3
+    task: "基于已有文档生成最终总结报告。任务：1) 读取 CR 和 CMR 生成的 doc/*.md；2) 整理核心发现和关键结论；3) 输出到 knowledge/summary-report.md。不要探索新内容，只整理归纳。"
+    max_cycles: 1
