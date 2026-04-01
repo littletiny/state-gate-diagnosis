@@ -37,9 +37,10 @@ class StageRunner(AgentRunner):
     def __init__(self, config: dict, global_context: dict):
         base_dir = config.get("base_dir", ".")
         task = config.get("task", "Task")
-        work_dir = config.get("work_dir")  # Kimi 工作目录（可选）
+        work_dir = config.get("work_dir")
         src_dir = config.get("src_dir")
-        super().__init__(base_dir, task, work_dir, src_dir)
+        backend = config.get("backend")
+        super().__init__(base_dir, task, work_dir, src_dir, backend)
         self.config = config
         self.global_context = global_context
 
@@ -514,9 +515,10 @@ class PipelineRunner:
         # 设置 base_dir
         stage_config["base_dir"] = str(self.base_dir)
 
-        # 继承 pipeline 顶层的 src_dir（如果 stage 未显式指定）
-        if "src_dir" not in stage_config and "src_dir" in self.config:
-            stage_config["src_dir"] = self.config["src_dir"]
+        # 继承 pipeline 顶层的 src_dir 和 backend（如果 stage 未显式指定）
+        for key in ("src_dir", "backend"):
+            if key not in stage_config and key in self.config:
+                stage_config[key] = self.config[key]
 
         # 获取 Runner 类，默认 SkillRunner
         runner_cls = self.RUNNER_MAP.get(skill, SkillRunner)

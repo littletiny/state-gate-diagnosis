@@ -17,7 +17,7 @@
 ```
 AgentRunner.run_cycle()
   -> build_prompt()  # 可插入 PromptHints
-  -> call_agent()     # 调用 Kimi
+  -> call_agent()     # 调用 Agent Backend
   -> validate()       # ExecutionValidator 检查
   -> 失败则触发 Retry Prompt
 ```
@@ -53,6 +53,7 @@ AgentRunner.run_cycle()
 
 **代码组装位置**:
 - `agent/base_runner.py` - 基础 Prompt 构建
+- `agent/backends.py` - Agent Backend 抽象层 (kimi|claude|codex)
 
 **动态内容来源**:
 - 研究轨迹：`ResearchLogManager.build_trajectory(task)`
@@ -70,8 +71,7 @@ AgentRunner.run_cycle()
 
 **代码**:
 
-  - `get_skill_path()` - 查找 Skill
-  - `list_skills()` - 列出可用 Skill
+  - `skills/{name}/SKILL.md` - 直接读取
 - `skills/{name}/SKILL.md` - 方法论文档本身
 
 **约定**:
@@ -141,7 +141,7 @@ Agent 执行结束
 - `agent/base_runner.py:AgentRunner`
   - `run(max_cycles)` - 主循环
   - `run_cycle()` - 单次迭代（pre -> prompt -> call -> validate -> post）
-  - `call_agent()` - 调用 Kimi CLI
+  - `call_agent()` - 调用 Agent Backend (kimi|claude|codex)
 
 **子类只需实现**:
 - `build_prompt()` - 构建本轮 Prompt
@@ -157,7 +157,7 @@ run.sh
   -> cd bin/ && python evolve.py --base-dir ..
      -> argparse: -n/--cycles, -s/--max-steps
         -> base_runner.AgentRunner.run(cycles)
-           -> self.max_steps 控制 kimi --max-steps-per-turn
+           -> self.max_steps 控制 Backend 步数限制（如 kimi --max-steps-per-turn）
 ```
 
 ## 关键配置

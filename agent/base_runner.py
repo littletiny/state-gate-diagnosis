@@ -26,12 +26,13 @@ from harness import (
     ExecutionValidator, ResearchLogManager, GitCommitHarness, PromptHints
 )
 from session import SessionRecorder, SimpleLockManager
+from backends import AgentBackend, create_backend
 
 
 class AgentRunner(ABC):
     """Agent 执行器基类 - 简化版"""
     
-    def __init__(self, base_dir: str, task: Optional[str] = None, work_dir: Optional[str] = None, src_dir: Optional[str] = None):
+    def __init__(self, base_dir: str, task: Optional[str] = None, work_dir: Optional[str] = None, src_dir: Optional[str] = None, backend: Optional[str] = None):
         self.base_dir = Path(base_dir).resolve()
         self.knowledge_dir = self.base_dir / "knowledge"
         self.knowledge_dir.mkdir(parents=True, exist_ok=True)
@@ -42,6 +43,10 @@ class AgentRunner(ABC):
         
         # 源码目录（外部配置，代码不硬编码默认值）
         self.src_dir = Path(src_dir).resolve() if src_dir else None
+        
+        # Agent Backend
+        backend_name = backend or "kimi"
+        self.backend = create_backend(backend_name)
         
         # 核心组件（简化）
         self.log_manager = ResearchLogManager(str(self.knowledge_dir))
@@ -79,79 +84,16 @@ class AgentRunner(ABC):
     
     def call_agent(self, prompt: str, show_realtime: bool = True) -> Tuple[str, int]:
         """
-        调用 Kimi Agent，返回 (output, returncode)
+        调用 Agent Backend，返回 (output, returncode)
         支持实时输出以便观察进度
         """
-        import time
-        from datetime import datetime
-        
-        cmd = [
-            "kimi",
-            "--print",
-            "--yolo",
-            "--quiet",
-            "--max-steps-per-turn", str(self.max_steps),
-            "--output-format", "text",
-            "--prompt", prompt
-        ]
-        
-        start_time = time.time()
-        print(f"[Agent] Started at {datetime.now().strftime('%H:%M:%S')}")
-        
-        try:
-            # 准备 cwd 参数（如果设置了 work_dir）
-            cwd = str(self.work_dir) if self.work_dir else None
-            if cwd:
-                print(f"[Agent] Working directory: {cwd}")
-            
-            if show_realtime:
-                process = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
-                    cwd=cwd
-                )
-                
-                output_lines = []
-                last_status_time = start_time
-                
-                for line in process.stdout:
-                    line = line.rstrip()
-                    output_lines.append(line)
-                    print(line)
-                    
-                    now = time.time()
-                    if now - last_status_time > 30:
-                        elapsed = now - start_time
-                        print(f"[Agent] Still running... ({elapsed:.0f}s elapsed)")
-                        last_status_time = now
-                
-                process.wait()
-                output = '\n'.join(output_lines)
-                returncode = process.returncode
-            else:
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=self.timeout,
-                    cwd=cwd
-                )
-                output = result.stdout if result.stdout else result.stderr
-                returncode = result.returncode
-            
-            elapsed = time.time() - start_time
-            print(f"[Agent] Completed in {elapsed:.1f}s, returncode={returncode}")
-            return output, returncode
-            
-        except subprocess.TimeoutExpired:
-            print(f"[Agent] Timeout after {self.timeout}s")
-            return "Error: Timeout", -1
-        except Exception as e:
-            print(f"[Agent] Error: {e}")
-            return f"Error: {e}", -1
+        return self.backend.call(
+            prompt=prompt,
+            show_realtime=show_realtime,
+            work_dir=self.work_dir,
+            max_steps=self.max_steps,
+            timeout=self.timeout,
+        )
     
     def validate(self, output: str, returncode: int, research_log_before: str) -> dict:
         """

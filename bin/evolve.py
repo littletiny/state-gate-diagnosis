@@ -72,6 +72,7 @@ def main():
     parser.add_argument('-s', '--max-steps', type=int, default=100, dest='max_steps',
                         help='单次对话最大工具调用步数 (默认: 100)')
     parser.add_argument('-t', '--task', help='任务目标描述')
+    parser.add_argument('--backend', default='kimi', help='Agent 后端 (kimi|claude|codex, 默认: kimi)')
     
     args = parser.parse_args()
     
@@ -88,6 +89,8 @@ def main():
         new_argv.extend(['--max-steps', str(args.max_steps)])
     if args.task:
         new_argv.extend(['-t', args.task])
+    if args.backend != 'kimi':
+        new_argv.extend(['--backend', args.backend])
     sys.argv = new_argv
     explore_main()
 

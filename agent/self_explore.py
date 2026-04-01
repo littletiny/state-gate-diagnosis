@@ -35,8 +35,8 @@ class ExploreAgent(AgentRunner):
             return path.read_text(encoding="utf-8")
         return ""
 
-    def __init__(self, base_dir: str, task: str = None, src_dir: str = None):
-        super().__init__(base_dir, task=task or "分析Linux整机网络带宽低的根因", src_dir=src_dir)
+    def __init__(self, base_dir: str, task: str = None, src_dir: str = None, backend: str = None):
+        super().__init__(base_dir, task=task or "分析Linux整机网络带宽低的根因", src_dir=src_dir, backend=backend)
         self.prompts_dir = self.base_dir / "agent" / "prompts"
         self.progress_file = self.knowledge_dir / "progress.json"
         self.progress = self._load_progress()
@@ -368,6 +368,7 @@ def main():
     )
     parser.add_argument("-t", "--task", help="任务目标描述")
     parser.add_argument("--src-dir", help="源码目录路径（默认不指定）")
+    parser.add_argument("--backend", default="kimi", help="Agent 后端 (kimi|claude|codex, 默认: kimi)")
 
     args = parser.parse_args()
 
@@ -377,7 +378,7 @@ def main():
         if (script_dir / "knowledge").exists():
             base_dir = script_dir
 
-    agent = ExploreAgent(str(base_dir), task=args.task, src_dir=args.src_dir)
+    agent = ExploreAgent(str(base_dir), task=args.task, src_dir=args.src_dir, backend=args.backend)
     agent.max_steps = args.max_steps
     agent.run(args.cycles)
 
