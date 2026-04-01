@@ -30,7 +30,7 @@ def find_interrupted_session(knowledge_dir: Path) -> tuple[Path, dict] | None:
 
     candidates = []
     for d in sessions_dir.iterdir():
-        if not d.is_dir() or d.name.startswith("."):
+        if not d.is_dir() or d.name.startswith(".") or d.name in ("logs",):
             continue
         manifest_file = d / "manifest.json"
         if manifest_file.exists():

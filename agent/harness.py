@@ -352,10 +352,10 @@ class GitCommitHarness:
 
 class SessionRecorder:
     """
-    会话记录器 - 创建带 task name 的目录
+    会话记录器 - 创建短 ID 命名的 session 目录
     
-    SoftLimit: Agent应读取session.md了解会话历史
-    HardLimit: 代码层自动创建和管理目录结构
+    Session 目录名: YYYYMMDD-HHMMSS (时间戳 ID)
+    Task 信息记录在 manifest.json 和 index.json 中
     """
     
     def __init__(self, knowledge_dir: str, task: str):
@@ -363,14 +363,14 @@ class SessionRecorder:
         self.sessions_dir = self.kb / "sessions"
         self.task = task
         self.start_time = datetime.now()
-        self.timestamp = self.start_time.strftime("%Y%m%d-%H%M%S")
-        
-        # 生成 slug
-        self.task_slug = self._slugify(task)
-        self.session_name = f"{self.timestamp}-{self.task_slug}"
+        # 短 ID: 时间戳 (如 20260401-120000)
+        self.session_id = self.start_time.strftime("%Y%m%d-%H%M%S")
+        # 添加微秒避免同一秒内重复
+        if (self.sessions_dir / self.session_id).exists():
+            self.session_id = self.start_time.strftime("%Y%m%d-%H%M%S-%f")[:-3]
         
         # 创建目录结构
-        self.actual_dir = self.sessions_dir / self.session_name
+        self.actual_dir = self.sessions_dir / self.session_id
         self.actual_dir.mkdir(parents=True, exist_ok=True)
         
         for subdir in ["states", "gates", "maps", "mechanisms", "paths", "logs"]:
@@ -378,15 +378,14 @@ class SessionRecorder:
         
         # 初始化会话文件
         self._init_session_file()
-    
-    def _slugify(self, text: str) -> str:
-        """将文本转换为目录名"""
-        return text.replace(" ", "-").replace("/", "-").replace("\\", "-")[:50]
+        
+        # 更新索引
+        self._update_index()
     
     def _init_session_file(self):
         """初始化 session.md 和 manifest.json"""
         session_file = self.actual_dir / "session.md"
-        session_file.write_text(f"""# Session: {self.session_name}
+        session_file.write_text(f"""# Session: {self.session_id}
 
 **任务**: {self.task}
 **开始时间**: {self.start_time.isoformat()}
@@ -397,7 +396,7 @@ class SessionRecorder:
 """, encoding='utf-8')
         
         manifest = {
-            "name": self.session_name,
+            "id": self.session_id,
             "task": self.task,
             "start_time": self.start_time.isoformat(),
             "status": "running",
@@ -408,6 +407,39 @@ class SessionRecorder:
         }
         manifest_file = self.actual_dir / "manifest.json"
         manifest_file.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding='utf-8')
+    
+    def _update_index(self):
+        """更新 sessions/index.json"""
+        index_file = self.sessions_dir / "index.json"
+        index = {}
+        if index_file.exists():
+            try:
+                index = json.loads(index_file.read_text(encoding='utf-8'))
+            except:
+                pass
+        
+        index[self.session_id] = {
+            "task": self.task,
+            "start_time": self.start_time.isoformat(),
+            "status": "running"
+        }
+        
+        index_file.write_text(json.dumps(index, indent=2, ensure_ascii=False), encoding='utf-8')
+    
+    def _update_index_status(self, status: str, end_time, stats: dict = None):
+        """更新 index.json 中的会话状态"""
+        index_file = self.sessions_dir / "index.json"
+        if index_file.exists():
+            try:
+                index = json.loads(index_file.read_text(encoding='utf-8'))
+                if self.session_id in index:
+                    index[self.session_id]["status"] = status
+                    index[self.session_id]["end_time"] = end_time.isoformat()
+                    if stats:
+                        index[self.session_id]["stats"] = stats
+                    index_file.write_text(json.dumps(index, indent=2, ensure_ascii=False), encoding='utf-8')
+            except:
+                pass
     
     def get_working_dir(self, subdir: str = None) -> Path:
         """获取工作目录路径"""
@@ -469,6 +501,7 @@ class SessionRecorder:
         manifest_file = self.actual_dir / "manifest.json"
         end_time = datetime.now()
         duration = (end_time - self.start_time).total_seconds()
+        status = "completed" if success else "failed"
         
         if session_file.exists():
             footer = f"""
@@ -476,7 +509,7 @@ class SessionRecorder:
 
 **结束时间**: {end_time.isoformat()}
 **持续时间**: {duration:.0f}秒
-**状态**: {'completed' if success else 'failed'}
+**状态**: {status}
 
 """
             if stats:
@@ -489,12 +522,15 @@ class SessionRecorder:
         
         if manifest_file.exists():
             manifest = json.loads(manifest_file.read_text(encoding='utf-8'))
-            manifest["status"] = "completed" if success else "failed"
+            manifest["status"] = status
             manifest["end_time"] = end_time.isoformat()
             manifest["duration_seconds"] = duration
             if stats:
                 manifest["stats"] = stats
             manifest_file.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding='utf-8')
+        
+        # 更新 index.json 状态
+        self._update_index_status(status, end_time, stats)
 
 
 # ============ 锁管理器 ============
