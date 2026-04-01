@@ -1,0 +1,38 @@
+# Pipeline: CR -> CMR -> Explore -> Summary
+#
+# 完整代码分析流程：
+#   1. CR: 代码阅读 - 全局架构理解
+#   2. CMR: 机制分析 - 深入关键模块
+#   3. Explore: 自由探索 - 关联分析与验证
+#   4. Summary: 总结归档 - 生成最终报告
+#
+# 使用方式:
+#   ./run.sh pipeline -c rules/cr-cmr-explore.yaml -s 100
+
+name: cr-cmr-explore-summary
+description: 完整代码分析 Pipeline - 从架构理解到机制深入再到总结归档
+
+stages:
+  # Stage 1: Code-Reader - 全局架构扫描
+  - name: "code-reader"
+    skill: code-reader
+    task: "阅读并分析目标代码库的架构设计，输出全景文档"
+    max_cycles: 1
+
+  # Stage 2: Code-Mechanism-Reader - 关键机制深入
+  - name: "mechanism-reader"
+    skill: code-mechanism-reader
+    task: "选择关键机制进行深入分析，输出机制文档"
+    max_cycles: 1
+
+  # Stage 3: Explore - 自由探索与关联分析
+  - name: "free-explore"
+    skill: explore
+    task: "基于 CR 和 CMR 的输出，进行自由探索：验证假设、发现关联、填补空白"
+    max_cycles: 10
+
+  # Stage 4: Summary - 总结归档
+  - name: "summary"
+    skill: explore
+    task: "整合所有分析结果，生成最终总结报告：核心发现、关键结论、待办事项"
+    max_cycles: 3
