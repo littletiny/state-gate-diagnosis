@@ -1,61 +1,52 @@
 ---
 name: summary
-description: SUM - Summary Report Generator. Generate structured final reports by consolidating analysis documents from CR, CMR, Explore and other stages. Use when the analysis is complete and a final summary report needs to be produced.
+description: SUM - Summary Report Generator. Generate final reports by consolidating analysis documents from CR, CMR, Explore and other stages. Use when analysis is complete and a final report needs to be produced.
 ---
 
 # Summary Report Generator
 
-Generate a consolidated final report from multi-stage analysis outputs.
+Consolidate multi-stage analysis outputs into a final report.
 
-## Quick Start
+## Input Sources
 
-```bash
-# List all analysis documents to consolidate
-ls doc/*.md knowledge/*/*.md knowledge/*.md 2>/dev/null
-```
+Read available analysis documents:
+- `doc/*.md` - CR/CMR outputs
+- `knowledge/states/*.md`, `knowledge/gates/*.md`, `knowledge/maps/*.md` - Explore outputs
+- `knowledge/research-log.md` - Research history
 
-Generate report: `knowledge/final-report.md`
+## Output
 
-## Workflow
+Single file: `knowledge/final-report.md`
 
-### Step 1: Collect Inputs
+## Report Content
 
-Read all analysis documents:
-- `doc/*.md` - CR/CMR architecture and mechanism docs
-- `knowledge/states/*.md` - States discovered during Explore
-- `knowledge/gates/*.md` - Gates discovered during Explore
-- `knowledge/maps/*.md` - Topology maps from Explore
-- `knowledge/research-log.md` - Research log
+Include these elements (organize freely based on available inputs):
 
-### Step 2: Extract Key Information
+**Context**
+- Analysis goal and scope
+- Methodology used (CR/CMR/Explore/...)
 
-For each document:
-- Identify document type (architecture/mechanism/state/gate/map)
-- Extract core conclusions
-- Record key references (file paths, line numbers)
+**Key Findings**
+- Architecture overview (if CR available)
+- Critical mechanisms (if CMR available)
+- States/Gates discovered (if Explore available)
+- Important discoveries and insights
 
-### Step 3: Generate Report
+**Issues & Risks**
+- Identified problems with severity
+- Potential risks
 
-See [references/report-template.md](references/report-template.md) for the 8-section structure:
+**Recommendations**
+- Actionable items with priority
+- Next steps / follow-up work
 
-1. Executive Summary - Core findings in 3-5 sentences
-2. Background & Scope - Goals, scope, methodology
-3. Architecture Overview - Tech stack, layers, components
-4. Key Mechanisms - Critical mechanisms from CMR
-5. Deep Dive Findings - States, Gates, discoveries
-6. Issues & Risks - Identified problems and risks
-7. Conclusions & Recommendations - Actionable items with priorities
-8. References - All source documents and code references
+**References**
+- Inline citations to source documents
+- Key code locations
 
-### Step 4: Finalize
+## Guidelines
 
-- Write to `knowledge/final-report.md`
-- Update `knowledge/research-log.md`
-- Git commit: `[summary]: Generate final analysis report`
-
-## Quality Checklist
-
-- [ ] Executive summary conveys core info in 30 seconds
-- [ ] Every conclusion has a traceable reference
-- [ ] Recommendations are specific, actionable, prioritized
-- [ ] No new analysis - only consolidation of existing work
+- Executive summary last: Write it after completing the report body
+- Dynamic structure: Skip sections if no relevant input exists
+- No fixed template: Organize content in the most readable way
+- Every conclusion must cite its source
