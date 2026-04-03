@@ -188,9 +188,13 @@ class AgentRunner(ABC):
             print(f"[Lock] 错误: {e}")
             return 0
         
-        # 初始化会话记录器
-        self.session_recorder = SessionRecorder(str(self.knowledge_dir), self.task)
-        print(f"[Session] 会话记录器已初始化")
+        # 初始化会话记录器（仅当 backend 产生产物时）
+        if self.backend.produces_artifacts:
+            self.session_recorder = SessionRecorder(str(self.knowledge_dir), self.task)
+            print(f"[Session] 会话记录器已初始化")
+        else:
+            self.session_recorder = None
+            print(f"[Session] Backend 不产生产物，跳过会话记录")
         
         print(f"\n{'#'*60}")
         print(f"# Agent Runner")
@@ -224,7 +228,7 @@ class AgentRunner(ABC):
                 self.finalize_session(success=success, stats=stats)
             
             # 结束会话记录
-            if self.session_recorder:
+            if self.session_recorder and self.backend.produces_artifacts:
                 stats = {"cycles": cycles_run, "task": self.task}
                 self.session_recorder.finalize(success=success, stats=stats)
             
