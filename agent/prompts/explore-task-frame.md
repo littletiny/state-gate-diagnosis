@@ -3,6 +3,7 @@
 ## 文档目录说明
 
 - 所有相关文档在当前目录
+- `sessions/` 目录存放历史调研结果，无需关注
 
 {warning}
 {iteration_hint}
