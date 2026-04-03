@@ -13,6 +13,9 @@ from typing import Optional, Tuple
 
 class AgentBackend(ABC):
     """Agent 后端抽象基类"""
+    
+    produces_artifacts: bool = True
+    """Backend 是否产生需要归档的产物。Mock/测试 backend 应设为 False"""
 
     @abstractmethod
     def call(
@@ -160,6 +163,8 @@ class CodexBackend(AgentBackend):
 
 class MockBackend(AgentBackend):
     """Mock 后端 - 仅打印 prompt，不实际调用 Agent（用于调试）"""
+    
+    produces_artifacts = False
 
     def call(
         self,

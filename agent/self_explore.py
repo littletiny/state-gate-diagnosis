@@ -365,6 +365,11 @@ class ExploreAgent(AgentRunner):
 
     def finalize_session(self, success: bool = True, stats: dict = None):
         """任务完成后的最终归档：复制文件到 session 目录，然后清理原始文件"""
+        # 如果 backend 不产生实际产物，跳过归档避免元数据污染
+        if not self.backend.produces_artifacts:
+            print("[Archive] Backend 不产生产物，跳过归档")
+            return
+        
         if not success:
             print("[Archive] 任务未成功完成，保留 knowledge/ 下的原始文件")
             return
