@@ -25,7 +25,14 @@ from base_runner import AgentRunner
 class ExploreAgent(AgentRunner):
     """探索 Agent - 目标驱动，无阶段约束，扁平工作目录"""
 
-    PROMPT_PARTS = ["identity", "methodology", "constraints"]
+    PROMPT_PARTS = [
+        "identity",
+        "methodology",
+        "document-format-hint",
+        "execution-flow-hint",
+        "git-commit-hint",
+        "constraints",
+    ]
     """Prompt 片段列表，按顺序组合成完整 prompt"""
 
     def _load_prompt_part(self, name: str) -> str:
@@ -35,9 +42,46 @@ class ExploreAgent(AgentRunner):
             return path.read_text(encoding="utf-8")
         return ""
 
-    def __init__(self, base_dir: str, task: str = None, src_dir: str = None, backend: str = None):
-        super().__init__(base_dir, task=task or "分析Linux整机网络带宽低的根因", src_dir=src_dir, backend=backend)
+    def __init__(self, base_dir: str, task: str = None, src_dir: str = None, backend: str = None, work_dir: str = None):
+        # 强制设置 work_dir 为 knowledge_dir，确保 CR/CMR 输出到正确位置
+        # 外部传入的 work_dir 被忽略，因为 ExploreAgent 的所有产出应在 knowledge 下
+        effective_work_dir = str(Path(base_dir).resolve() / "knowledge")
+        super().__init__(base_dir, task=task, src_dir=src_dir, backend=backend, work_dir=effective_work_dir)
+        
+        # 如果 src_dir 在 knowledge 外，创建 soft link 方便 agent 访问
+        if self.src_dir:
+            self._ensure_src_link()
+        
         self.prompts_dir = self.base_dir / "agent" / "prompts"
+    
+    def _ensure_src_link(self):
+        """
+        确保 src_dir 可以通过 knowledge/ 下的 soft link 访问。
+        如果 src_dir 不在 knowledge 下，创建同名 soft link。
+        """
+        src_path = Path(self.src_dir)
+        if not src_path.exists():
+            return
+        
+        # 检查是否已在 knowledge 目录下
+        try:
+            src_path.relative_to(self.knowledge_dir)
+            return  # 已在 knowledge 下，无需 link
+        except ValueError:
+            pass  # 不在 knowledge 下，需要创建 link
+        
+        link_name = src_path.name
+        link_path = self.knowledge_dir / link_name
+        
+        # 如果已存在同名文件/链接，跳过
+        if link_path.exists() or link_path.is_symlink():
+            return
+        
+        try:
+            link_path.symlink_to(src_path, target_is_directory=True)
+            print(f"[Link] Created: {link_path} -> {src_path}")
+        except Exception as e:
+            print(f"[Link] Warning: Failed to create symlink: {e}")
         self.progress_file = self.knowledge_dir / "progress.json"
         self.progress = self._load_progress()
         self._stagnant = False
@@ -104,7 +148,7 @@ class ExploreAgent(AgentRunner):
     def _get_kb_snapshot(self) -> str:
         """生成知识库状态快照"""
         lines = []
-        for subdir in ["states", "gates", "maps", "paths"]:
+        for subdir in ["states", "gates", "maps", "paths", "doc"]:
             d = self.knowledge_dir / subdir
             if d.exists():
                 files = sorted(d.glob("*.md"))
@@ -126,11 +170,14 @@ class ExploreAgent(AgentRunner):
 
         archived = 0
         exclude_dirs = {"sessions"}  # 排除其他会话目录
-        exclude_files = {"index.md"}  # index.md 是 knowledge/ 的元数据，不归档
+        exclude_files = {"index.md", "AGENTS.md", "progress.json"}  # 元数据文件不归档
         
         # 遍历 knowledge/ 下的所有文件和目录
         for item in self.knowledge_dir.iterdir():
             if item.name in exclude_dirs:
+                continue
+            if item.is_symlink():
+                # 跳过 soft link（如指向外部 src_dir 的链接）
                 continue
             if item.is_file() and item.name in exclude_files:
                 continue
@@ -278,6 +325,13 @@ class ExploreAgent(AgentRunner):
             )
         return ""
 
+    def _get_last_round_hint(self) -> str:
+        if self.max_cycles and self.current_cycle == self.max_cycles - 1:
+            return (
+                "**⚠️ 最后一轮：必须生成最终报告，汇总完整诊断结论与推荐路径。**"
+            )
+        return ""
+
     def build_prompt(self) -> str:
         parts = []
         for name in self.PROMPT_PARTS:
@@ -299,6 +353,7 @@ class ExploreAgent(AgentRunner):
                 src_dir=self.src_dir or "未配置",
                 iteration_hint=self._get_iteration_hint(),
                 first_round_hint=self._get_first_round_hint(),
+                last_round_hint=self._get_last_round_hint(),
                 max_cycles=self.max_cycles or "?",
             )
         else:
@@ -387,6 +442,7 @@ def main():
     parser.add_argument("-t", "--task", help="任务目标描述")
     parser.add_argument("--src-dir", help="源码目录路径（默认不指定）")
     parser.add_argument("--backend", default="kimi", help="Agent 后端 (kimi|claude|codex, 默认: kimi)")
+    parser.add_argument("--work-dir", help="Backend 工作目录 (默认: knowledge/)")
 
     args = parser.parse_args()
 
@@ -396,7 +452,7 @@ def main():
         if (script_dir / "knowledge").exists():
             base_dir = script_dir
 
-    agent = ExploreAgent(str(base_dir), task=args.task, src_dir=args.src_dir, backend=args.backend)
+    agent = ExploreAgent(str(base_dir), task=args.task, src_dir=args.src_dir, backend=args.backend, work_dir=args.work_dir)
     agent.max_steps = args.max_steps
     agent.max_cycles = args.cycles
     agent.run(args.cycles)

@@ -75,6 +75,7 @@ def main():
     parser.add_argument('-t', '--task', help='任务目标描述')
     parser.add_argument('--src-dir', help='源码目录路径（用于源码分析）')
     parser.add_argument('--backend', default='kimi', help='Agent 后端 (kimi|claude|codex, 默认: kimi)')
+    parser.add_argument('--work-dir', help='Backend 工作目录 (默认: 当前目录)')
     
     args = parser.parse_args()
     
@@ -95,6 +96,8 @@ def main():
         new_argv.extend(['--src-dir', args.src_dir])
     if args.backend != 'kimi':
         new_argv.extend(['--backend', args.backend])
+    if args.work_dir:
+        new_argv.extend(['--work-dir', args.work_dir])
     sys.argv = new_argv
     explore_main()
 

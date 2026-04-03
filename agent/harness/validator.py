@@ -35,6 +35,19 @@ class ExecutionValidator:
             return "##" in current
         return len(current) > len(before_content)
     
+    def check_doc_created(self) -> bool:
+        """
+        HardLimit检查: doc/ 目录下是否有文档生成
+        
+        当 Agent 调用 CR/CMR 等 skill 时，应输出架构文档到 doc/ 目录。
+        如果未生成，提示 Agent 需要创建文档。
+        """
+        doc_dir = self.knowledge_dir / "doc"
+        if not doc_dir.exists():
+            return False
+        # 检查是否有 .md 文件
+        return any(doc_dir.glob("*.md"))
+    
     def check_git_clean(self, base_dir: str) -> bool:
         """
         HardLimit检查: Git是否有未提交更改
@@ -69,6 +82,7 @@ class ExecutionValidator:
         result = {
             "success": returncode == 0,
             "research_log_updated": False,
+            "doc_created": False,
             "git_clean": True,
             "need_continue": False,
             "continue_reason": None,
@@ -86,6 +100,10 @@ class ExecutionValidator:
         if not result["research_log_updated"]:
             result["warnings"].append("HardLimit: research-log.md was not updated")
         
+        # HardLimit检查: doc/ 目录是否有文档（如果 Agent 应该生成的话）
+        result["doc_created"] = self.check_doc_created()
+        # 注：不强制要求每次迭代都生成 doc/，只在必要时检查
+        
         return result
     
     def format_validation_report(self, result: dict) -> str:
@@ -93,6 +111,7 @@ class ExecutionValidator:
         lines = ["\n[Validation Report - HardLimit Check]"]
         lines.append(f"  Success: {result['success']}")
         lines.append(f"  Research Log Updated: {result['research_log_updated']}")
+        lines.append(f"  Doc Created: {result.get('doc_created', 'N/A')}")
         lines.append(f"  Git Clean: {result['git_clean']}")
         if result['need_continue']:
             lines.append(f"  Need Continue: Yes ({result['continue_reason']})")
