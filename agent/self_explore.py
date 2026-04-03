@@ -323,7 +323,7 @@ class ExploreAgent(AgentRunner):
     def _get_first_round_hint(self) -> str:
         if self.current_cycle == 0:
             return (
-                "**🚀 第一轮：请调用 CR（Code Reader）和 CMR（Code Mechanism Reader）阅读源码，"
+                "**🚀 当前是起始阶段：调用 CR（Code Reader）和 CMR（Code Mechanism Reader）阅读源码，"
                 "生成系统架构文档和核心机制分析文档。**"
             )
         return ""
@@ -331,7 +331,7 @@ class ExploreAgent(AgentRunner):
     def _get_last_round_hint(self) -> str:
         if self.max_cycles and self.current_cycle == self.max_cycles - 1:
             return (
-                "**⚠️ 最后一轮：必须生成最终报告，汇总完整诊断结论与推荐路径。**"
+                "**⚠️ 当前是收尾阶段：必须生成最终报告，汇总完整诊断结论与推荐路径。**"
             )
         return ""
 
