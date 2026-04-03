@@ -27,17 +27,19 @@ class ExploreAgent(AgentRunner):
 
     PROMPT_PARTS = [
         "identity",
-        "methodology",
-        "document-format-hint",
-        "execution-flow-hint",
-        "git-commit-hint",
         "constraints",
+        "execution-flow-hint",
     ]
     """Prompt 片段列表，按顺序组合成完整 prompt"""
 
     def _load_prompt_part(self, name: str) -> str:
         """加载 prompt 片段，从 prompts/ 目录读取 .md 文件"""
+        # 优先尝试 explore-{name}.md，如果不存在则尝试 {name}.md
         path = self.prompts_dir / f"explore-{name}.md"
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+        # 尝试不加前缀的文件名
+        path = self.prompts_dir / f"{name}.md"
         if path.exists():
             return path.read_text(encoding="utf-8")
         return ""
@@ -53,6 +55,13 @@ class ExploreAgent(AgentRunner):
             self._ensure_src_link()
         
         self.prompts_dir = self.base_dir / "agent" / "prompts"
+        
+        # 初始化状态属性
+        self.progress_file = self.knowledge_dir / "progress.json"
+        self.progress = self._load_progress()
+        self._stagnant = False
+        self._pre_hash = None
+        self.max_cycles = None
     
     def _ensure_src_link(self):
         """
@@ -82,11 +91,6 @@ class ExploreAgent(AgentRunner):
             print(f"[Link] Created: {link_path} -> {src_path}")
         except Exception as e:
             print(f"[Link] Warning: Failed to create symlink: {e}")
-        self.progress_file = self.knowledge_dir / "progress.json"
-        self.progress = self._load_progress()
-        self._stagnant = False
-        self._pre_hash = None
-        self.max_cycles = None
 
     def _get_session_dir(self):
         """获取当前 session 目录，直接使用 SessionRecorder 创建的目录"""
@@ -313,9 +317,8 @@ class ExploreAgent(AgentRunner):
 
     def _get_iteration_hint(self) -> str:
         if self.max_cycles is None:
-            return ""
-        lines = ["## 迭代进度", "", f"当前迭代: {self.current_cycle + 1} / {self.max_cycles}", ""]
-        return "\n".join(lines)
+            return "## 迭代策略\n\n"
+        return f"## 迭代策略\n\n当前迭代: {self.current_cycle + 1} / {self.max_cycles}\n"
 
     def _get_first_round_hint(self) -> str:
         if self.current_cycle == 0:
@@ -350,7 +353,6 @@ class ExploreAgent(AgentRunner):
                 warning=self._get_stagnant_warning(),
                 knowledge_dir=self.knowledge_dir,
                 base_dir=self.base_dir,
-                src_dir=self.src_dir or "未配置",
                 iteration_hint=self._get_iteration_hint(),
                 first_round_hint=self._get_first_round_hint(),
                 last_round_hint=self._get_last_round_hint(),
@@ -378,6 +380,11 @@ class ExploreAgent(AgentRunner):
             print(f"[Archive] 归档完成，knowledge/ 已清理")
         else:
             print(f"[Archive] 无文件需要归档")
+        
+        # 清理 session 状态文件
+        if self.progress_file.exists():
+            self.progress_file.unlink()
+            print(f"[Archive] 已清理 {self.progress_file.name}")
 
     def post_execute(self, output: str, returncode: int, validation: dict):
         """执行后：自动提交、检查进度"""

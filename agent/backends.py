@@ -158,10 +158,29 @@ class CodexBackend(AgentBackend):
         return _run_command(cmd, "codex", show_realtime, work_dir, timeout)
 
 
+class MockBackend(AgentBackend):
+    """Mock 后端 - 仅打印 prompt，不实际调用 Agent（用于调试）"""
+
+    def call(
+        self,
+        prompt: str,
+        show_realtime: bool = True,
+        work_dir: Optional[Path] = None,
+        max_steps: int = 100,
+        timeout: int = 600,
+    ) -> Tuple[str, int]:
+        print("\n" + "="*60)
+        print("[MockBackend] 接收到 prompt，长度: {} chars".format(len(prompt)))
+        print("="*60)
+        print("\n[MockBackend] 返回成功状态（未实际执行）")
+        return "Mock execution completed", 0
+
+
 BACKEND_REGISTRY = {
     "kimi": KimiBackend,
     "claude": ClaudeBackend,
     "codex": CodexBackend,
+    "mock": MockBackend,
 }
 
 

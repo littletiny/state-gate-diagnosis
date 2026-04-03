@@ -80,7 +80,7 @@ Output: paths/{symptom}_diagnosis.md
 Output Specification:
 - **Purpose**: Executable diagnostic procedures for specific symptoms
 - **Content**: Step-by-step decision trees starting from symptom, traversing State-Gate graph to root cause
-- **Evidence**: Each step must reference code locations (file:line) or data points
+- **Evidence**: Each step must reference callchain or data points
 - **Structure**: Symptom → Starting State → Hypothesis paths → Verification steps → Root cause identification
 - **Status**: `done` (diagnosis complete) or `partial` (inconclusive, needs more data)
 
@@ -90,7 +90,7 @@ Diagnosis Method:
 - **Observer Check**: Question "obvious" assumptions; verify the observation framework itself is unbiased
 - **Counter-Intuitive Hypothesis**: Must include at least one hypothesis that contradicts intuition, combating cognitive fixation
 - **Mechanism over Symptom**: Don't stop at "what broke"; find the causal chain of "how it broke"
-- **Evidence-Driven**: All conclusions must include code references (file:line)
+- **Evidence-Driven**: All conclusions must include code callchain
 - **Value of Outliers**: Unexplained details often reveal the true root cause
 
 **Flow**: Observer Check → Problem Evolution → Hypothesis Expansion → Mechanism Audit → Evidence-Driven Deep Dive → Global Consistency Audit
