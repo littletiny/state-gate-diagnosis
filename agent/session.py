@@ -42,6 +42,20 @@ class SessionRecorder:
         
         # 更新索引
         self._update_index()
+        
+        # 创建 current 软链接指向当前 session
+        self._update_current_link()
+    
+    def _update_current_link(self):
+        """创建/更新 current 软链接指向当前 session 目录"""
+        link_path = self.kb / "current"
+        
+        # 如果已存在，先删除（可能是旧 session 的链接或文件）
+        if link_path.exists() or link_path.is_symlink():
+            link_path.unlink()
+        
+        # 创建新的软链接
+        link_path.symlink_to(self.actual_dir, target_is_directory=True)
     
     def _init_session_file(self):
         """初始化 session.md 和 manifest.json"""

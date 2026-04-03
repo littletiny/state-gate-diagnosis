@@ -16,11 +16,8 @@
 ## 快速开始
 
 ```bash
-# 进入目录
-cd net-diag
-
 # 启动探索
-./run.sh -t "分析 TCP 带宽问题"
+./run.sh -t "分析 TCP 带宽问题" --src-dir=/path/to/linux -n 10
 
 # 观察执行
 # - 读取 research-log.md 了解历史
